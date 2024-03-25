@@ -15,7 +15,7 @@ const app = express();
 
 app.use(
   session({
-    secret: 'Poll', 
+    secret: 'Poll',
     resave: false,
     saveUninitialized: true,
   })
@@ -24,7 +24,6 @@ app.use(
 
 app.use(
   cors({
-    methods: ['GET', 'POST', 'DELETE', 'UPDATE', 'PUT', 'PATCH'],
     origin: '*',
     credentials: true,
   })
