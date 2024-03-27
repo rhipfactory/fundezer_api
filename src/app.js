@@ -21,11 +21,10 @@ app.use(
   })
 );
 
-app.use(
-  cors({
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: 'https://app.fundezer.org',
+  credentials: true,
+}));
 
 
 
