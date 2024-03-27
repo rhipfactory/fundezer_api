@@ -21,13 +21,12 @@ app.use(
   })
 );
 
-
 app.use(
   cors({
-    origin: '*',
     credentials: true,
   })
 );
+
 
 
 app.use(helmet());
