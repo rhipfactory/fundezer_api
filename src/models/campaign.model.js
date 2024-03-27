@@ -11,7 +11,7 @@ const campaignSchema = new mongoose.Schema(
     },
     typeOfFundraising: {
       type: String,
-      enum: ["Cancer", "Diabetes", "Surgery", "Organ transplant", "Injury"],
+      enum: ["Cancer", "Diabetes", "Surgery", "Organ transplant", "Injury", "Others"],
     },
     title: {
       type: String,
@@ -64,7 +64,7 @@ const campaignSchema = new mongoose.Schema(
 );
 
 // Virtual property to calculate the amount raised
-campaignSchema.virtual('amountRaised').get(function() {
+campaignSchema.virtual('amountRaised').get(function () {
   return this.amountDonated || 0;
 });
 
@@ -76,7 +76,7 @@ campaignSchema.virtual('populatedComments', {
 });
 
 // Virtual property to calculate the amount remaining
-campaignSchema.virtual('amountRemaining').get(function() {
+campaignSchema.virtual('amountRemaining').get(function () {
   const raise = parseInt(this.raise) || 0;
   const amountRaised = parseInt(this.amountDonated) || 0;
   return raise - amountRaised;
