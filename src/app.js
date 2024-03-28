@@ -22,7 +22,7 @@ app.use(
 );
 
 app.use(cors({
-  origin: 'https://app.fundezer.org',
+  origin: '*',
   credentials: true,
 }));
 
