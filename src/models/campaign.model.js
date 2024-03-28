@@ -11,7 +11,7 @@ const campaignSchema = new mongoose.Schema(
     },
     typeOfFundraising: {
       type: String,
-      enum: ["Cancer", "Diabetes", "Surgery", "Organ transplant", "Injury", "Others"],
+      enum: ["Cancer", "Diabetes", "Surgery", "Organ transplant", "Others", "Injury",],
     },
     title: {
       type: String,

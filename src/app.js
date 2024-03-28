@@ -53,7 +53,7 @@ app.use('/api/v1/auth', authRoute);
 
 app.use('/api/v1/user', userRoute);
 
-app.use('/api/v1/campaign', campaignRoute);
+app.use('/api/v1/campaign', campaignRoute)
 
 app.use('/api/v1/donation', donationRoute);
 
