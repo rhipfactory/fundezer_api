@@ -6,31 +6,34 @@ const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
 const otpGenerator = require('otp-generator');
 
+// Read HTML template file
+const fs = require('fs');
+
 //sign user token using jwt
-const signToken = id =>{
-  return jwt.sign({id: id}, process.env.JWT_SECRET_KEY,{
-      expiresIn: process.env.JWT_EXPIRES_IN
+const signToken = (id) => {
+  return jwt.sign({ id: id }, process.env.JWT_SECRET_KEY, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
   });
 };
 
-const createSendToken = (user, statusCode, res) =>{
-  const token = signToken(user._id)
+const createSendToken = (user, statusCode, res) => {
+  const token = signToken(user._id);
 
   const cookieOtions = {
-      expiresIn: new Date(Date.now() * process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000),
-      httpOnly: true,
-  }
-  if(process.env.NODE_ENV === 'production') cookieOtions.secure = true
-  res.status(statusCode)
-  .cookie("jwt", token, cookieOtions)
-  .json({
-      success: true,
-      token,
-      data: {
-          user
-      }
-  })
-}
+    expiresIn: new Date(
+      Date.now() * process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+    ),
+    httpOnly: true,
+  };
+  if (process.env.NODE_ENV === 'production') cookieOtions.secure = true;
+  res.status(statusCode).cookie('jwt', token, cookieOtions).json({
+    success: true,
+    token,
+    data: {
+      user,
+    },
+  });
+};
 
 /**
  * @author Okpe Onoja <okpeonoja18@gmail.com>
@@ -84,7 +87,7 @@ exports.signup = catchAsync(async (req, res, next) => {
       name: name,
       email: email,
       password: password,
-      userType: "Individual"
+      userType: 'Individual',
     });
 
     const otp = (newUser.otp = otpGenerator.generate(4, {
@@ -92,12 +95,18 @@ exports.signup = catchAsync(async (req, res, next) => {
       specialChars: false,
       lowerCaseAlphabets: false,
     }));
+
+    const html = fs.readFileSync('otp.html', 'utf8');
+    function replacePlaceholders(htmlContent, name, otp) {
+      return htmlContent
+        .replace(/\[Name\]/g, name)
+        .replace(/\[OTP number\]/g, otp);
+    }
+    const processedHtml = replacePlaceholders(html, name, otp);
+
     await newUser.save({ validateBeforeSave: false });
 
-    const message = `
-        Hi ${req.body.name}, Welcome to 'Fundezer' 🚀
-        Before doing anything, we recommend verifying your account to use most of the features available,
-        here is your otp verification code ${otp}`;
+    const message = processedHtml;
 
     await sendEmail({
       to: newUser.email,
@@ -113,7 +122,6 @@ exports.signup = catchAsync(async (req, res, next) => {
     });
   }
 });
-
 
 /**
  * @author Okpe Onoja <okpeonoja18@gmail.com>
@@ -161,13 +169,18 @@ exports.ngoSignup = catchAsync(async (req, res, next) => {
       specialChars: false,
       lowerCaseAlphabets: false,
     }));
+
+    const html = fs.readFileSync('otp.html', 'utf8');
+    function replacePlaceholders(htmlContent, name, otp) {
+      return htmlContent
+        .replace(/\[Name\]/g, name)
+        .replace(/\[OTP number\]/g, otp);
+    }
+    const processedHtml = replacePlaceholders(html, name, otp);
+
     await newUser.save({ validateBeforeSave: false });
 
-    const message = `
-        Hi ${req.body.name}, welcome to 'Fundezer' 🚀
-        Before doing anything, we recommend verifying your account to use most of the features available,
-        here is your otp verification code ${otp}`;
-
+    const message = processedHtml;
     await sendEmail({
       to: newUser.email,
       subject: 'Welcome to Fundezer 🚀',
@@ -183,8 +196,6 @@ exports.ngoSignup = catchAsync(async (req, res, next) => {
   }
 });
 
-
-
 /**
  * @author Okpe Onoja <okpeonoja18@gmail.com>
  * @description Verify Users Email Controller
@@ -196,32 +207,17 @@ exports.verify = catchAsync(async (req, res, next) => {
   const { otpCode } = req.body;
 
   if (!otpCode) {
-    return next(
-      new AppError(
-        'Please provide an otp code', 
-        401
-      )
-    );
+    return next(new AppError('Please provide an otp code', 401));
   }
   const user = await User.findOne({ otp: otpCode });
-  
+
   if (!user) {
-    return next(
-      new AppError(
-        'This otp code has expired or is invalid',
-        401
-      )
-    );
+    return next(new AppError('This otp code has expired or is invalid', 401));
   }
 
   if (user.isActive === true) {
     user.otp = null;
-    return next(
-      new AppError(
-        'Your account has already been verified..', 
-        400
-      )
-    );
+    return next(new AppError('Your account has already been verified..', 400));
   }
 
   //then change the user's status to active
@@ -247,12 +243,7 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
 
   // Check if email and password exist
   if (!email || !password) {
-    return next(
-      new AppError(
-        'Please provide email and password!', 
-        400
-      )
-    );
+    return next(new AppError('Please provide email and password!', 400));
   }
 
   // Check if user exists and password is correct
@@ -273,21 +264,11 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
   }
 
   if (user.isActive === false) {
-    return next(
-      new AppError(
-        'Please verify your email and try again.',
-        400
-      )
-    );
+    return next(new AppError('Please verify your email and try again.', 400));
   }
 
   if (!user || !(await user.correctPassword(password, user.password))) {
-    return next(
-      new AppError(
-        'Incorrect email or password', 
-        401
-      )
-    );
+    return next(new AppError('Incorrect email or password', 401));
   }
 
   createSendToken(user, 200, res);
@@ -306,12 +287,7 @@ exports.login = catchAsync(async (req, res, next) => {
 
   // Check if email and password exist
   if (!email || !password) {
-    return next(
-      new AppError(
-        'Please provide email and password!', 
-        400
-      )
-    );
+    return next(new AppError('Please provide email and password!', 400));
   }
 
   // Check if user exists and password is correct
@@ -332,24 +308,15 @@ exports.login = catchAsync(async (req, res, next) => {
   }
 
   if (user.isActive === false) {
-    return next(
-      new AppError('Please verify your email and try again.', 400)
-    );
+    return next(new AppError('Please verify your email and try again.', 400));
   }
 
   if (!user || !(await user.correctPassword(password, user.password))) {
-    return next(
-      new AppError(
-        'Incorrect email or password', 
-        401
-      )
-    );
+    return next(new AppError('Incorrect email or password', 401));
   }
-
 
   createSendToken(user, 200, res);
 });
-
 
 /**
  * @author Okpe Onoja <okpeonoja18@gmail.com>
@@ -359,59 +326,53 @@ exports.login = catchAsync(async (req, res, next) => {
  * @type POST
  */
 //Resend verification link to email address
-exports.resendVerification = catchAsync(async(req, res, next)=>{
+exports.resendVerification = catchAsync(async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
 
-  const user = await User.findOne({email: req.body.email})
-
-  if(!user){
-    return next(
-      new AppError(
-      'Not Found, please try again',
-       404
-      )
-    )
+  if (!user) {
+    return next(new AppError('Not Found, please try again', 404));
   }
 
   if (user.isActive === true) {
     res.status(400).json({
       status: false,
-      message: 'Account has already been verified'
-    })
+      message: 'Account has already been verified',
+    });
   }
 
- 
-  const otp = user.otp = otpGenerator.generate(4, {upperCaseAlphabets: false, specialChars: false, lowerCaseAlphabets: false})
-  await user.save({ validateBeforeSave: false})
+  const otp = (user.otp = otpGenerator.generate(4, {
+    upperCaseAlphabets: false,
+    specialChars: false,
+    lowerCaseAlphabets: false,
+  }));
+  await user.save({ validateBeforeSave: false });
 
   const message = `
   Hi there ${user.name}!
-  Here's a new code to verify your account.${otp}`
+  Here's a new code to verify your account.${otp}`;
 
-    try{
-        await sendEmail(
-            {
-              to: user.email,
-              subject: 'Verification Link 🚀!',
-              message
-            }
-        )
-        res.status(200).json({
-            success: true,
-            message: 'Verification link sent successfully!'
-        })
-    }catch(err){
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: 'Verification Link 🚀!',
+      message,
+    });
+    res.status(200).json({
+      success: true,
+      message: 'Verification link sent successfully!',
+    });
+  } catch (err) {
+    user.otp = undefined;
+    await user.save({ validateBeforeSave: false });
 
-      user.otp = undefined;
-      await user.save({ validateBeforeSave: false})
-      
-        await user.save()
+    await user.save();
 
-        return res.status(500).json({
-            status: false,
-            message: "Couldn't send the verification email"});
-        
-    }
-})
+    return res.status(500).json({
+      status: false,
+      message: "Couldn't send the verification email",
+    });
+  }
+});
 
 /**
  * @author Okpe Onoja <okpeonoja18@gmail.com>
@@ -426,12 +387,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email });
 
   if (!user) {
-    return next(
-      new AppError(
-        'There is no user with this email address',
-        404
-      )
-    );
+    return next(new AppError('There is no user with this email address', 404));
   }
 
   const otp = (user.otp = otpGenerator.generate(4, {
@@ -485,21 +441,11 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   const { otpCode } = req.body;
 
   if (!otpCode) {
-    return next(
-      new AppError(
-        'Please provide an otp code', 
-        401
-      )
-    );
+    return next(new AppError('Please provide an otp code', 401));
   }
   const user = await User.findOne({ otp: otpCode });
   if (!user) {
-    return next(
-      new AppError(
-        'This otp code has expired or is invalid', 
-        401
-      )
-    );
+    return next(new AppError('This otp code has expired or is invalid', 401));
   }
 
   console.log(user.otp);
@@ -522,10 +468,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   if (!token) {
     return next(
-      new AppError(
-        'You are not logged in! Please log in to get access.', 
-        401
-      )
+      new AppError('You are not logged in! Please log in to get access.', 401)
     );
   }
 
@@ -546,17 +489,13 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   if (currentUser.changedPasswordAfter(decoded.iat)) {
     return next(
-      new AppError(
-        'User recently changed password, please login again!', 
-        401
-      )
+      new AppError('User recently changed password, please login again!', 401)
     );
   }
 
   req.user = currentUser;
   next();
 });
-
 
 exports.restrict = (...userTypes) => {
   return (req, res, next) => {
@@ -569,8 +508,6 @@ exports.restrict = (...userTypes) => {
     next();
   };
 };
-
-
 
 /**
  * @author Okpe Onoja <okpeonoja18@gmail.com>
@@ -597,21 +534,13 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
 
   // Check if the current password is correct
   if (!(await user.correctPassword(currentPassword, user.password))) {
-    return next(
-      new AppError(
-        'Current password is incorrect', 
-        401
-      )
-    );
+    return next(new AppError('Current password is incorrect', 401));
   }
 
   // Check if the new password and confirm password match
   if (newPassword !== confirmPassword) {
     return next(
-      new AppError(
-        "New password and confirm password don't match", 
-        400
-      )
+      new AppError("New password and confirm password don't match", 400)
     );
   }
 
@@ -632,7 +561,6 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
  * @type POST
  */
 exports.Logout = catchAsync(async (req, res, next) => {
-
   res.cookie('jwt', 'loggedout', {
     expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true,
